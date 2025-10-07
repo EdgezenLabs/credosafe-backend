@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta , timezone
 from app.models import user as user_model
 from app.models import tenant as tenant_model
 from app.models import loan_product as lp_model
@@ -223,7 +223,7 @@ def verify_otp(db: Session, principal: str, code: str, purpose: str):
         return False
     if rec.code != code:
         return False
-    if rec.expires_at < datetime.utcnow():
+    if rec.expires_at < datetime.now(timezone.utc):
         return False
     rec.used = True
     db.add(rec)
