@@ -59,5 +59,5 @@ def send_otp_service(db: Session, principal: str, purpose: str = "login", tenant
 
     return {
         "message": f"OTP sent successfully to {principal}",
-        "expires_in_minutes": 10
+        "expires_in_minutes": 5
     }
