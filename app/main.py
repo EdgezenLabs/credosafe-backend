@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import logging
 from app.core.database import Base, engine
 from app.routes import (
@@ -14,6 +16,14 @@ Base.metadata.create_all(bind=engine)
 
 # app init
 app = FastAPI(title="CredoSafe API", version="1.0")
+
+# Mount static directory
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Serve favicon explicitly
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("app/static/favicon.ico")
 
 # CORS (adjust origins for production)
 app.add_middleware(
