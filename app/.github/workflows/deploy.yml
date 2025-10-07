@@ -3,8 +3,8 @@ name: 🚀 Deploy CredoSafe Backend to EC2
 on:
   push:
     branches:
-      - release        # trigger deploy only when pushing to release branch
-  workflow_dispatch:   # allows manual trigger
+      - release
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -15,10 +15,6 @@ jobs:
     steps:
       - name: 🧾 Checkout Repository
         uses: actions/checkout@v4
-
-      # Optional: show repository info for debugging
-      - name: Show Current Directory
-        run: pwd && ls -la
 
       - name: 📦 Copy Code to EC2 via SCP
         uses: appleboy/scp-action@v0.1.6
@@ -40,46 +36,41 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
+          script_stop: true
           script: |
             set -e
-
             echo "🚀 Starting deployment..."
-            echo "Moving new files into project directory..."
             rsync -av --delete --exclude 'venv' --exclude '.env' --exclude '.git' /home/ec2-user/deploy_tmp/ ${{ secrets.REMOTE_DIR }}/
 
             cd ${{ secrets.REMOTE_DIR }}
 
-            # ensure python + venv
+            # Ensure Python virtual environment
             if [ ! -d "venv" ]; then
               echo "🔧 Creating virtual environment..."
               python3 -m venv venv
             fi
 
-            echo "🧠 Activating venv and installing dependencies..."
             source venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
 
-            echo "💾 Setting up environment variables..."
-            # create/update .env file
-            cat > .env <<EOF
-DATABASE_URL=${{ secrets.DATABASE_URL }}
-JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
-SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-EOF
+            echo "💾 Writing environment variables..."
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+            echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
+            echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> .env
+            echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
 
-            echo "🧬 Running Alembic migrations (if any)..."
+            echo "🧬 Running Alembic migrations (if available)..."
             if [ -f "alembic.ini" ]; then
               alembic upgrade head || true
             fi
 
-            echo "🔁 Restarting systemd service..."
+            echo "🔁 Restarting FastAPI service..."
             sudo systemctl daemon-reload || true
             sudo systemctl restart credosafe
             sudo systemctl status credosafe --no-pager || true
 
-            echo "🧹 Cleaning up temporary files..."
+            echo "🧹 Cleaning up temp files..."
             rm -rf /home/ec2-user/deploy_tmp
 
             echo "✅ Deployment complete!"
