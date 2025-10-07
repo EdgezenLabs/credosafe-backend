@@ -1,8 +1,14 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+
+class SendOTPSchema(BaseModel):
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
 
 class LoginSchema(BaseModel):
-    email: EmailStr
-    otp: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    otp_code: str = Field(alias="otp") 
 
 class TokenSchema(BaseModel):
     access_token: str
