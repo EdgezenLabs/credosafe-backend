@@ -32,7 +32,9 @@ class AuthService:
         token = create_access_token({
             "user_id": str(user.id),
             "tenant_id": str(user.tenant_id) if user.tenant_id else None,
-            "role": user.role
+            "role": user.role,
+            "email": user.email,
+            "phone": user.phone
         })
         return {"access_token": token, "token_type": "bearer"}
 
