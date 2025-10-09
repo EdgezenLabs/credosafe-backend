@@ -40,6 +40,28 @@ def get_user_by_phone(db: Session, phone: str):
 def get_user(db: Session, user_id: str):
     return db.query(user_model.User).filter(user_model.User.id == user_id).first()
 
+def update_user_password(db: Session, email: str, password: str):
+    user = get_user_by_email(db, email)
+    if not user:
+        return None
+    user.password_hash = security.hash_password(password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def authenticate_user(db: Session, email: str, password: str):
+    """Authenticate user with email and password"""
+    user = get_user_by_email(db, email)
+    if not user:
+        return None
+    if not user.password_hash:
+        return None  # User hasn't set a password yet
+    if not security.verify_password(password, user.password_hash):
+        return None  # Wrong password
+    if not user.is_active:
+        return None  # User is deactivated
+    return user
+
 def list_users(db: Session, skip=0, limit=25, role=None):
     q = db.query(user_model.User)
     if role:
