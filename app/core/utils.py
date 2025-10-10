@@ -45,3 +45,38 @@ def send_email_otp(recipient_email: str, otp_code: str):
             server.send_message(msg)
     except Exception as e:
         print(f"[Error] Failed to send OTP email: {e}")
+
+def send_password_reset_email(recipient_email: str, reset_token: str, base_url: str = "http://localhost:5000"):
+    """Send password reset email with reset link"""
+    reset_link = f"{base_url}/reset-password?token={reset_token}"
+    
+    subject = "Reset Your CredoSafe Password"
+    body = f"""
+    Dear User,
+
+    You have requested to reset your password for your CredoSafe account.
+
+    Click the link below to reset your password:
+    {reset_link}
+
+    This link is valid for 1 hour only.
+
+    If you did not request this password reset, please ignore this email.
+
+    Regards,
+    CredoSafe Team
+    """
+    
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = settings.SMTP_SENDER_EMAIL
+    msg["To"] = recipient_email
+
+    try:
+        with smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"[Error] Failed to send password reset email: {e}")
+        return False

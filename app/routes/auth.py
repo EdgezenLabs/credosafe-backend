@@ -4,9 +4,11 @@ from app.core.database import get_db
 from app.services.auth_service import AuthService, send_otp_service
 from app.schemas.auth_schema import (
     SendOTPSchema, LoginSchema, TokenSchema, SetPasswordSchema,
-    EmailPasswordLoginSchema, LoginResponseSchema, UserDetails
+    EmailPasswordLoginSchema, LoginResponseSchema, UserDetails,
+    ForgotPasswordSchema, ResetPasswordSchema
 )
 from app.core.security import get_current_user_email, create_access_token
+from app.core.utils import send_password_reset_email
 from app.crud import crud
 
 router = APIRouter()
@@ -100,3 +102,79 @@ def login(
         token_type="bearer",
         user=user_details
     )
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    payload: ForgotPasswordSchema, 
+    db: Session = Depends(get_db)
+):
+    """Send password reset link to user's email"""
+    # Check if user exists
+    user = crud.get_user_by_email(db, payload.email)
+    if not user:
+        # Don't reveal whether user exists or not for security
+        return {"message": "If the email exists in our system, you will receive a password reset link"}
+    
+    if not user.is_active:
+        return {"message": "If the email exists in our system, you will receive a password reset link"}
+    
+    # Create password reset token
+    reset_token = crud.create_password_reset_token(db, str(user.id))
+    
+    # Send password reset email
+    email_sent = send_password_reset_email(
+        recipient_email=user.email,
+        reset_token=reset_token.token,
+        base_url="http://localhost:5000"  # This should be configurable
+    )
+    
+    if not email_sent:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send password reset email. Please try again later."
+        )
+    
+    return {"message": "If the email exists in our system, you will receive a password reset link"}
+
+
+@router.post("/reset-password")
+def reset_password(
+    payload: ResetPasswordSchema,
+    db: Session = Depends(get_db)
+):
+    """Reset user password using reset token"""
+    # Validate reset token
+    reset_token = crud.get_password_reset_token(db, payload.token)
+    if not reset_token:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset token"
+        )
+    
+    # Get user
+    user = crud.get_user(db, str(reset_token.user_id))
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="User account is deactivated"
+        )
+    
+    # Update user password
+    updated_user = crud.update_user_password(db, user.email, payload.password)
+    if not updated_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to update password"
+        )
+    
+    # Mark token as used
+    crud.use_password_reset_token(db, payload.token)
+    
+    return {"message": "Password reset successfully"}

@@ -8,9 +8,11 @@ from app.models import application_documents as doc_model
 from app.models import Lead as lead_model
 from app.models import payments as payment_model
 from app.models import otp_codes as otp_model
+from app.models import password_reset_token as reset_model
 from app.core import security
 from app.schemas import user_schema, tenant_schema, loan_schema, lead_schema, application_schema
 import random
+import secrets
 
 # Users
 def create_user(db: Session, user_in: user_schema.UserCreate):
@@ -67,6 +69,48 @@ def list_users(db: Session, skip=0, limit=25, role=None):
     if role:
         q = q.filter(user_model.User.role == role)
     return q.offset(skip).limit(limit).all()
+
+# Password Reset Tokens
+def create_password_reset_token(db: Session, user_id: str):
+    """Create a password reset token for a user"""
+    # Invalidate any existing tokens for this user
+    db.query(reset_model.PasswordResetToken).filter(
+        reset_model.PasswordResetToken.user_id == user_id,
+        reset_model.PasswordResetToken.used == False
+    ).update({"used": True})
+    
+    # Create new token
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # Token expires in 1 hour
+    
+    reset_token = reset_model.PasswordResetToken(
+        user_id=user_id,
+        token=token,
+        expires_at=expires_at,
+        used=False
+    )
+    
+    db.add(reset_token)
+    db.commit()
+    db.refresh(reset_token)
+    return reset_token
+
+def get_password_reset_token(db: Session, token: str):
+    """Get a valid password reset token"""
+    return db.query(reset_model.PasswordResetToken).filter(
+        reset_model.PasswordResetToken.token == token,
+        reset_model.PasswordResetToken.used == False,
+        reset_model.PasswordResetToken.expires_at > datetime.now(timezone.utc)
+    ).first()
+
+def use_password_reset_token(db: Session, token: str):
+    """Mark a password reset token as used"""
+    reset_token = get_password_reset_token(db, token)
+    if reset_token:
+        reset_token.used = True
+        db.commit()
+        return reset_token
+    return None
 
 # Tenants
 def create_tenant(db: Session, payload: tenant_schema.TenantCreate):
