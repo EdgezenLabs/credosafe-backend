@@ -11,6 +11,9 @@ from app.routes import (
 )
 from app.core.utils import add_exception_handlers
 
+# Import models to ensure they are registered
+from app.models import password_reset_token
+
 # create tables (for dev/demo). For production, use Alembic migrations.
 Base.metadata.create_all(bind=engine)
 
