@@ -19,4 +19,4 @@ class LoanProductOut(LoanProductBase):
     tenant_id: Optional[str]
     created_at: Optional[datetime]
     class Config:
-        orm_mode = True
+        from_attributes = True

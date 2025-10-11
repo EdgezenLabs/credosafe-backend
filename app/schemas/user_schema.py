@@ -19,4 +19,4 @@ class UserOut(UserBase):
     is_active: bool
     created_at: Optional[datetime]
     class Config:
-        orm_mode = True
+        from_attributes = True

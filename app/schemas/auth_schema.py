@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 import re
 from datetime import datetime
@@ -24,7 +24,8 @@ class SetPasswordSchema(BaseModel):
         description="Password must be 8-72 characters long and contain at least one uppercase, one lowercase, one digit, and one special character"
     )
     
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
@@ -73,7 +74,8 @@ class ResetPasswordSchema(BaseModel):
         description="Password must be 8-72 characters long and contain at least one uppercase, one lowercase, one digit, and one special character"
     )
     
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
