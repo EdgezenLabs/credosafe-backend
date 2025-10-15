@@ -1,10 +1,10 @@
 # app/models/lead.py
 
 from sqlalchemy import Column, String, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from uuid import uuid4
-from .base import Base, TimestampMixin
+from app.core.database import Base
+from .base import TimestampMixin
 
 class Lead(Base, TimestampMixin):
     __tablename__ = "leads"
@@ -19,6 +19,3 @@ class Lead(Base, TimestampMixin):
     status = Column(String, default="new")
     notes = Column(String)
     next_followup = Column(DateTime(timezone=True))
-
-    tenant = relationship("Tenant", back_populates="leads")
-    agent = relationship("User", foreign_keys=[agent_id], back_populates="leads_managed")

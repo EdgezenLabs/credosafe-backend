@@ -14,6 +14,7 @@ class User(Base):
     password_hash = Column(Text, nullable=True)
     role = Column(Text, nullable=False, default="customer")
     is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
     meta = Column(JSON, default={})
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -1,9 +1,11 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.utils.files import save_upload_file
 from app.core.config import settings
 from app.crud import crud
+import os
 
 router = APIRouter()
 
@@ -17,3 +19,4 @@ def upload_document(application_id: str = Form(...), document_type: str = Form(.
 def list_doc(application_id: str, db: Session = Depends(get_db)):
     docs = crud.list_documents_for_application(db, application_id)
     return {"total": len(docs), "items": docs}
+
