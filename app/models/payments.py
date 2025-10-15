@@ -2,10 +2,10 @@
 
 # 1. Import necessary components
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
 
 # Assuming Base and TimestampMixin are correctly defined and exported from .base
-from .base import Base, TimestampMixin 
+from app.core.database import Base
+from .base import TimestampMixin 
 
 
 class Payment(TimestampMixin, Base):
@@ -30,9 +30,6 @@ class Payment(TimestampMixin, Base):
     
     # Status can be 'SUCCESS', 'PENDING', 'FAILED', etc.
     status = Column(String(50), default="PENDING", nullable=False)
-    
-    # Relationship: Defines the reverse relationship to the Application model (optional, but standard)
-    application = relationship("Application", back_populates="payments")
 
 # Note: The structure of your model will depend entirely on your business requirements.
 # The fields above are common examples for a payment record.

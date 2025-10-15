@@ -142,3 +142,28 @@ Thumbs.db
 uploads/
 logs/
 *.db
+
+# Temporary development/fix scripts (don't commit these)
+add_column.py
+check_db.py
+check_table_structure.py
+create_loan_app_manual.py
+create_loan_tables.py
+create_test_user.py
+create_test_user_v2.py
+debug_*.py
+diagnose_server.py
+document_upload_alternatives.py
+fix_*.py
+minimal_server.py
+test_api.py
+test_app_debug.py
+test_endpoints.py
+test_imports.py
+test_loan_api.py
+test_models.py
+live_deployment_check.py
+live_server_test.py
+
+# Keep sample data script (useful for development)
+# create_sample_loan_data.py

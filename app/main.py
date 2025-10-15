@@ -7,15 +7,15 @@ from app.core.database import Base, engine
 from app.routes import (
     auth, users, tenants, loan_products,
     applications, leads, documents, payments,
-    installments, followups, reports
+    installments, followups, reports, loan_management
 )
 from app.core.utils import add_exception_handlers
 
-# Import models to ensure they are registered
-from app.models import password_reset_token
+# Import ALL models to ensure they are registered with SQLAlchemy
+import app.models  # This imports all models through __init__.py
 
 # create tables (for dev/demo). For production, use Alembic migrations.
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)  # Commented out - tables already exist
 
 # app init
 app = FastAPI(title="CredoSafe API", version="1.0")
@@ -31,14 +31,20 @@ async def favicon():
 # CORS (adjust origins for production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:5000", "http://127.0.0.1:3000", "http://127.0.0.1:5000"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 # logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logging.basicConfig(
+    level=logging.DEBUG, 
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
 
 # include routers
 app.include_router(auth.router, prefix="/v1/auth", tags=["Auth"])
@@ -52,9 +58,10 @@ app.include_router(payments.router, prefix="/v1/payments", tags=["Payments"])
 app.include_router(installments.router, prefix="/v1/installments", tags=["Installments"])
 app.include_router(followups.router, prefix="/v1/followups", tags=["Followups"])
 app.include_router(reports.router, prefix="/v1/reports", tags=["Reports"])
+app.include_router(loan_management.router, prefix="/v1", tags=["Loan Management"])
 
-# global error handlers
-add_exception_handlers(app)
+# global error handlers - temporarily disabled for debugging
+# add_exception_handlers(app)
 
 @app.get("/")
 def root():

@@ -242,6 +242,10 @@ def save_document(db: Session, application_id: str, uploaded_by: str, file_url: 
 def list_documents_for_application(db: Session, application_id: str):
     return db.query(doc_model.ApplicationDocument).filter(doc_model.ApplicationDocument.application_id == application_id).all()
 
+def get_document_by_id(db: Session, document_id: str):
+    """Get a single document by its ID"""
+    return db.query(doc_model.ApplicationDocument).filter(doc_model.ApplicationDocument.id == document_id).first()
+
 # Payments
 def create_payment(db: Session, payload):
     p = payment_model.Payment(
@@ -304,3 +308,37 @@ def applications_summary(db: Session, tenant_id: str = None, date_from=None, dat
         q = q.filter(app_model.Application.tenant_id == tenant_id)
     rows = q.all()
     return [{"status": r[0], "count": r[1]} for r in rows]
+
+# Loan Management CRUD Operations
+from app.models.loan import Loan, LoanApplication, LoanDocument, LoanPayment, EMISchedule
+
+def get_user_active_loan(db: Session, user_id: str):
+    """Get user's active loan"""
+    return db.query(Loan).filter(
+        Loan.user_id == user_id,
+        Loan.status.in_(["active", "overdue"])
+    ).first()
+
+def get_user_pending_application(db: Session, user_id: str):
+    """Get user's pending loan application"""
+    return db.query(LoanApplication).filter(
+        LoanApplication.user_id == user_id,
+        LoanApplication.status.in_(["under_review", "documents_pending", "approved"])
+    ).first()
+
+def create_loan_application(db: Session, application_data: dict):
+    """Create a new loan application"""
+    application = LoanApplication(**application_data)
+    db.add(application)
+    db.commit()
+    db.refresh(application)
+    return application
+
+def update_loan_application_status(db: Session, application_id: str, status: str):
+    """Update loan application status"""
+    application = db.query(LoanApplication).filter(LoanApplication.id == application_id).first()
+    if application:
+        application.status = status
+        db.commit()
+        return application
+    return None
