@@ -406,13 +406,14 @@ class LoanManagementService:
         }
 
     @staticmethod
-    def save_application_document(db: Session, application_id: str, document_type: str, file_name: str, user_id: str) -> dict:
+    def save_application_document(db: Session, application_id: str, document_type: str, file_name: str, user_id: str, file_path: str) -> dict:
         """Save document for loan application"""
         
         logger.info(f"=== SAVE APPLICATION DOCUMENT DEBUG ===")
         logger.info(f"Application ID: {application_id}")
         logger.info(f"Document type: {document_type}")
         logger.info(f"File name: {file_name}")
+        logger.info(f"File path: {file_path}")
         logger.info(f"User ID: {user_id}")
         
         try:
@@ -438,13 +439,13 @@ class LoanManagementService:
             if not application:
                 raise ValueError("Application not found or doesn't belong to user")
             
-            # Create document record
+            # Create document record with actual file path
             document = LoanDocument(
                 application_id=application_uuid,
-                user_id=user_uuid,  # Add user_id
+                user_id=user_uuid,
                 document_type=document_type,
                 file_name=file_name,
-                file_path=f"/uploads/{application_id}/{file_name}",  # TODO: Implement actual file storage
+                file_path=file_path,  # Use the actual file path from disk
                 status="uploaded"
             )
             
@@ -458,6 +459,7 @@ class LoanManagementService:
                 "document_id": str(document.id),
                 "document_type": document_type,
                 "file_name": file_name,
+                "file_path": file_path,
                 "status": "uploaded",
                 "uploaded_at": document.uploaded_at.isoformat()
             }

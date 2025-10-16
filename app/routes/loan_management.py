@@ -176,10 +176,32 @@ def upload_application_document(
     # NO VALIDATION - Accept everything for now
     # TODO: Add validation back later if needed
     
-    # Save document to database
+    # Create upload directory if it doesn't exist
+    upload_dir = os.path.join("uploads", application_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    logger.info(f"Upload directory: {upload_dir}")
+    
+    # Save file to disk
+    file_path = os.path.join(upload_dir, file.filename)
     try:
+        with open(file_path, "wb") as buffer:
+            content = file.file.read()
+            buffer.write(content)
+        logger.info(f"File saved to disk: {file_path}")
+    except Exception as e:
+        logger.error(f"Failed to save file to disk: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    finally:
+        file.file.close()
+    
+    # Save document metadata to database
+    try:
+        # Use absolute path for database storage
+        absolute_file_path = os.path.abspath(file_path)
+        logger.info(f"Absolute file path: {absolute_file_path}")
+        
         document_data = LoanManagementService.save_application_document(
-            db, application_id, document_type, file.filename, str(user.id)
+            db, application_id, document_type, file.filename, str(user.id), absolute_file_path
         )
         logger.info(f"Document saved to database: {document_data}")
         
@@ -189,5 +211,126 @@ def upload_application_document(
             "data": document_data
         }
     except Exception as e:
-        logger.error(f"Failed to save document: {e}")
+        logger.error(f"Failed to save document metadata: {e}")
+        # Clean up file if database save fails
+        if os.path.exists(file_path):
+            os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Failed to save document: {str(e)}")
+
+@router.get("/loan/document/{document_id}/view")
+def view_loan_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_email)
+):
+    """View/download a loan application document"""
+    
+    logger.info(f"=== VIEW DOCUMENT REQUEST ===")
+    logger.info(f"Document ID: {document_id}")
+    logger.info(f"User email: {current_user['email']}")
+    
+    # Get user by email
+    user = crud.get_user_by_email(db, current_user["email"])
+    if not user:
+        logger.error(f"User not found: {current_user['email']}")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    logger.info(f"User found: ID={user.id}, email={user.email}")
+    
+    # Get document from database
+    logger.info(f"Calling get_document_by_id with document_id={document_id}, user_id={str(user.id)}")
+    document = LoanManagementService.get_document_by_id(db, document_id, str(user.id))
+    
+    logger.info(f"Document query result: {document}")
+    
+    if not document:
+        logger.error(f"Document not found or access denied: document_id={document_id}, user_id={str(user.id)}")
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
+    
+    logger.info(f"Document found: {document}")
+    logger.info(f"Checking file path: {document['file_path']}")
+    
+    # Check if file exists
+    if not os.path.exists(document['file_path']):
+        logger.error(f"File not found on server: {document['file_path']}")
+        
+        # Check if this is an old-style path (without drive letter)
+        if document['file_path'].startswith('/uploads/'):
+            logger.warning("This appears to be an old document uploaded before file storage was implemented")
+            raise HTTPException(
+                status_code=404, 
+                detail="This document was uploaded before file storage was implemented. Please re-upload the document."
+            )
+        
+        raise HTTPException(status_code=404, detail=f"File not found on server: {document['file_path']}")
+    
+    logger.info(f"File exists! Returning FileResponse for: {document['file_name']}")
+    
+    # Return the file for viewing
+    return FileResponse(
+        path=document['file_path'],
+        media_type="application/pdf",  # Assuming PDF, adjust if needed
+        filename=document['file_name'],
+        headers={
+            "Content-Disposition": f'inline; filename="{document["file_name"]}"'
+        }
+    )
+
+@router.get("/loan/document/{document_id}/download")
+def download_loan_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_email)
+):
+    """Download a loan application document"""
+    
+    logger.info(f"=== DOWNLOAD DOCUMENT REQUEST ===")
+    logger.info(f"Document ID: {document_id}")
+    logger.info(f"User email: {current_user['email']}")
+    
+    # Get user by email
+    user = crud.get_user_by_email(db, current_user["email"])
+    if not user:
+        logger.error(f"User not found: {current_user['email']}")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    logger.info(f"User found: ID={user.id}, email={user.email}")
+    
+    # Get document from database
+    logger.info(f"Calling get_document_by_id with document_id={document_id}, user_id={str(user.id)}")
+    document = LoanManagementService.get_document_by_id(db, document_id, str(user.id))
+    
+    logger.info(f"Document query result: {document}")
+    
+    if not document:
+        logger.error(f"Document not found or access denied: document_id={document_id}, user_id={str(user.id)}")
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
+    
+    logger.info(f"Document found: {document}")
+    logger.info(f"Checking file path: {document['file_path']}")
+    
+    # Check if file exists
+    if not os.path.exists(document['file_path']):
+        logger.error(f"File not found on server: {document['file_path']}")
+        
+        # Check if this is an old-style path (without drive letter)
+        if document['file_path'].startswith('/uploads/'):
+            logger.warning("This appears to be an old document uploaded before file storage was implemented")
+            raise HTTPException(
+                status_code=404, 
+                detail="This document was uploaded before file storage was implemented. Please re-upload the document."
+            )
+        
+        raise HTTPException(status_code=404, detail=f"File not found on server: {document['file_path']}")
+    
+    logger.info(f"File exists! Returning FileResponse for download: {document['file_name']}")
+    
+    # Return the file for download
+    return FileResponse(
+        path=document['file_path'],
+        media_type="application/octet-stream",
+        filename=document['file_name'],
+        headers={
+            "Content-Disposition": f'attachment; filename="{document["file_name"]}"'
+        }
+    )
