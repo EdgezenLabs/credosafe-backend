@@ -124,6 +124,25 @@ def get_loan_details(
     
     return LoanDetailsResponse(data=loan_details)
 
+@router.put("/loan/application/{application_id}/approve")
+def approve_loan_application(
+    application_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_email)
+):
+    """Approve a loan application (admin only)"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin users can approve loan applications")
+
+    # Find the application
+    application = db.query(LoanManagementService.__dict__["LoanApplication"]).filter_by(id=application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    if application.status == "approved":
+        return {"status": "already_approved", "message": "Application already approved"}
+    application.status = "approved"
+    db.commit()
+    return {"status": "success", "message": "Loan application approved", "application_id": application_id}
 @router.post("/loan/payment", response_model=PaymentResponse)
 def process_loan_payment(
     payment_data: LoanPaymentCreate,

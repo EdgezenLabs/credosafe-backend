@@ -7,7 +7,7 @@ from app.core.database import Base, engine
 from app.routes import (
     auth, users, tenants, loan_products,
     applications, leads, documents, payments,
-    installments, followups, reports, loan_management
+    installments, followups, reports, loan_management, admin
 )
 from app.core.utils import add_exception_handlers
 
@@ -59,6 +59,7 @@ app.include_router(installments.router, prefix="/v1/installments", tags=["Instal
 app.include_router(followups.router, prefix="/v1/followups", tags=["Followups"])
 app.include_router(reports.router, prefix="/v1/reports", tags=["Reports"])
 app.include_router(loan_management.router, prefix="/v1", tags=["Loan Management"])
+app.include_router(admin.router, prefix="/v1", tags=["Admin"])
 
 # global error handlers - temporarily disabled for debugging
 # add_exception_handlers(app)
